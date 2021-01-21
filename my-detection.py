@@ -54,7 +54,8 @@ while True:
     print("taille rectangle =={:d}".format(len(rects)))
     # render the image
     objects=ct.update(rects)
-
+    print("nobre de de vehicles ")
+    print(len(objects))
     #print("objets traques =={:d}".format(len(centroids)))
     output.Render(img)
     # update the title bar

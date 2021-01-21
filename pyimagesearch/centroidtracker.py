@@ -145,16 +145,16 @@ class CentroidTracker():
 				print("data")
 				print(data)
 				self.variation_rates_centroids[objectID]=self.variation_rates_centroids[objectID]+data
-				print("variation")			
-				print(self.variation_rates_centroids[objectID])
 				# lets compute the speed of each centroid updated
 				speed_vector=self.speed(self.objects[objectID],inputCentroids[col],tB)
 				#self.speed_vectors.append(speed_vector)
 				self.speed_vectors_dict[objectID].append(speed_vector)
 				#Lets update the centroid value
-				self.objects[objectID] = inputCentroids[col]
-				self.disappeared[objectID] = 0
-				
+				if abs(data)<0.3:
+					self.objects[objectID] = inputCentroids[col]
+					self.disappeared[objectID] = 0
+				else:
+					self.register(inputCentroids[col],inputClasses[col])
 				# indicate that we have examined each of the row and
 				# column indexes, respectively
 				usedRows.add(row)
@@ -205,5 +205,5 @@ class CentroidTracker():
 		print(self.classes)
 		print(self.variation_rates_centroids)
 		print("Speed vectors")
-		print(self.speed_vectors_dict)
+		# print(self.speed_vectors_dict)
 		return len(self.objects)
