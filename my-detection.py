@@ -33,7 +33,7 @@ output = jetson.utils.videoOutput(opt.output_URI, argv=sys.argv)
 compteur=0
 i=0
 data=[]
-labels=[2,3,4,5,6,7,8]
+labels=[2,3,5,6,7,8]
 # process frames until the user exits
 while True:
     # capture the next image
@@ -55,8 +55,7 @@ while True:
     # render the image
     objects=ct.update(rects)
     print("nobre de de vehicles ")
-    print(len(objects))
-    #print("objets traques =={:d}".format(len(centroids)))
+    print("objets traques =={:d}".format(len(objects)))
     output.Render(img)
     # update the title bar
     output.SetStatus("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))

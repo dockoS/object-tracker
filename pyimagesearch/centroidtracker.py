@@ -8,7 +8,8 @@ import time
 def distance(p):
     return sqrt(p[0]**2 +p[1]**2)
 
-    
+def signe(speed1,speed2):
+    return (speed1[0]*speed2[0]>=0 and speed1[1]*speed2[1]>=0)
 class CentroidTracker():
 	def __init__(self, maxDisappeared=50):
 		# initialize the next unique object ID along with two ordered
@@ -22,7 +23,6 @@ class CentroidTracker():
 		self.classes=OrderedDict()
 		self.temps=time.time()
 		self.speed_vectors_dict=OrderedDict()
-		self.speed_vectors=list()
 		# store the number of maximum consecutive frames a given
 		# object is allowed to be marked as "disappeared" until we
 		# need to deregister the object from tracking
@@ -142,23 +142,38 @@ class CentroidTracker():
 				distance1=distance(inputCentroids[col])
 				distanceSeries=pd.Series([distance0,distance1])
 				data=distanceSeries.pct_change()[1]
-				print("data")
-				print(data)
 				self.variation_rates_centroids[objectID]=self.variation_rates_centroids[objectID]+data
+				print("variation")
+				print(data)
+				print("somme des variations")
+				print(self.variation_rates_centroids[objectID])
+				print("centroid")
+				print(objectID)
 				# lets compute the speed of each centroid updated
 				speed_vector=self.speed(self.objects[objectID],inputCentroids[col],tB)
+				print(speed_vector)
 				#self.speed_vectors.append(speed_vector)
 				self.speed_vectors_dict[objectID].append(speed_vector)
 				#Lets update the centroid value
-				if abs(data)<0.3:
-					self.objects[objectID] = inputCentroids[col]
-					self.disappeared[objectID] = 0
+				#before updating the centroid we must check if it is the same centroid: If the centroid variation is
+				#greater than 0.2 (bias) we assume that this centroid is a new centroid an unseen object and we register it
+				if len(self.speed_vectors_dict[objectID])>=2:	
+					if abs(data)<0.3 and np.dot(np.array(self.speed_vectors_dict[objectID][-2]["speed"]),np.array(speed_vector["speed"]))>0:
+						self.objects[objectID] = inputCentroids[col]
+						self.disappeared[objectID] = 0
+					else:
+						self.register(inputCentroids[col],inputClasses[col])
 				else:
-					self.register(inputCentroids[col],inputClasses[col])
+					if abs(data)<0.2:
+						self.objects[objectID] = inputCentroids[col]
+						self.disappeared[objectID] = 0
+					else:
+						self.register(inputCentroids[col],inputClasses[col])
 				# indicate that we have examined each of the row and
 				# column indexes, respectively
 				usedRows.add(row)
 				usedCols.add(col)
+			print(self.objects)
 			self.temps=tB
 			# compute both the row and column index we have NOT yet
 			# examined
@@ -191,7 +206,7 @@ class CentroidTracker():
 					self.register(inputCentroids[col],inputClasses[col])
 
 		# return the set of trackable objects
-		return  self.objects,self.variation_rates_centroids
+		return  self.objects
 	def filtrage(self):
 		print("avant")
 		print(self.objects)
