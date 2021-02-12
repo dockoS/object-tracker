@@ -1,5 +1,6 @@
 # import the necessary packages
 from scipy.spatial import distance as dist
+from scipy.spatial import distance_matrix as dist_mat
 from collections import OrderedDict
 import numpy as np
 import pandas as pd
@@ -9,7 +10,7 @@ def distance(p):
     return sqrt(p[0]**2 +p[1]**2)
 
 def signe(speed1,speed2):
-    return (speed1[0]*speed2[0]>=0 and speed1[1]*speed2[1]>=0)
+    return (speed1[0]*speed2[0]>=0)
 class CentroidTracker():
 	def __init__(self, maxDisappeared=50):
 		# initialize the next unique object ID along with two ordered
@@ -21,8 +22,11 @@ class CentroidTracker():
 		self.objects = OrderedDict()
 		self.disappeared = OrderedDict()
 		self.classes=OrderedDict()
-		self.temps=time.time()
+		self.temps=time.time()*1000
+		self.t=0
 		self.speed_vectors_dict=OrderedDict()
+		self.distanceInterVehicule=OrderedDict()
+		self.numberImages=0
 		# store the number of maximum consecutive frames a given
 		# object is allowed to be marked as "disappeared" until we
 		# need to deregister the object from tracking
@@ -45,17 +49,23 @@ class CentroidTracker():
 		del self.objects[objectID]
 		del self.classes[objectID]
 		del self.speed_vectors_dict[objectID]
-	def speed(self,centroidA,centroidB,tB):
-		tA=self.temps
+	def speed(self,centroidA,centroidB,t_i_1):
+		tA=self.t
 		vx=0
 		vy=0
-		if tA!=tB :
-			vx=(centroidA[0]-centroidB[0])/(tA-tB)
-			vy=(centroidA[1]-centroidB[1])/(tA-tB)
+		if tA!=t_i_1 :
+			vx=(centroidA[0]-centroidB[0])/(tA-t_i_1)
+			vy=(centroidA[1]-centroidB[1])/(tA-t_i_1)
 		
-		return {"speed":(vx,vy),"time":(tA,tB)}
+		return {"speed":(vx,vy),"time":(tA,t_i_1)}
+	def interdistance(self):
+		mat=[]
+		for object in self.objects:
+			mat.append(self.objects[object])	
+		return dist_mat(mat,mat)
 
 	def update(self, rects):
+    	
 		# check to see if the list of input bounding box rectangles
 		# is empty
 		if len(rects) == 0:
@@ -83,6 +93,7 @@ class CentroidTracker():
 			# use the bounding box coordinates to derive the centroid
 			inputCentroids[i] = rects[i].Center
 			inputClasses[i]=rects[i].ClassID
+		
 		# if we are currently not tracking any objects take the input
 		# centroids and register each of them
 		if len(self.objects) == 0:
@@ -124,7 +135,9 @@ class CentroidTracker():
 			# loop over the combination of the (row, column) index
 			# tuples
 			#TB is the time now in seconde 
-			tB=time.time()
+			tB=time.time()*1000
+			
+			
 			for (row, col) in zip(rows, cols):
 				# if we have already examined either the row or
 				# column value before, ignore it
@@ -150,7 +163,7 @@ class CentroidTracker():
 				print("centroid")
 				print(objectID)
 				# lets compute the speed of each centroid updated
-				speed_vector=self.speed(self.objects[objectID],inputCentroids[col],tB)
+				speed_vector=self.speed(self.objects[objectID],inputCentroids[col],self.t+tB-self.temps)
 				print(speed_vector)
 				#self.speed_vectors.append(speed_vector)
 				self.speed_vectors_dict[objectID].append(speed_vector)
@@ -158,13 +171,13 @@ class CentroidTracker():
 				#before updating the centroid we must check if it is the same centroid: If the centroid variation is
 				#greater than 0.2 (bias) we assume that this centroid is a new centroid an unseen object and we register it
 				if len(self.speed_vectors_dict[objectID])>=2:	
-					if abs(data)<0.3 and np.dot(np.array(self.speed_vectors_dict[objectID][-2]["speed"]),np.array(speed_vector["speed"]))>0:
+					if abs(data)<0.3 and signe(self.speed_vectors_dict[objectID][-2]["speed"],speed_vector["speed"])>0:
 						self.objects[objectID] = inputCentroids[col]
 						self.disappeared[objectID] = 0
 					else:
 						self.register(inputCentroids[col],inputClasses[col])
 				else:
-					if abs(data)<0.2:
+					if abs(data)<0.3:
 						self.objects[objectID] = inputCentroids[col]
 						self.disappeared[objectID] = 0
 					else:
@@ -174,6 +187,7 @@ class CentroidTracker():
 				usedRows.add(row)
 				usedCols.add(col)
 			print(self.objects)
+			self.t=self.t + tB-self.temps
 			self.temps=tB
 			# compute both the row and column index we have NOT yet
 			# examined
@@ -206,7 +220,14 @@ class CentroidTracker():
 					self.register(inputCentroids[col],inputClasses[col])
 
 		# return the set of trackable objects
+		if len(self.objects)>=2:
+			self.distanceInterVehicule[self.numberImages]=self.interdistance()
+			print("mattttttttttttttttttttttt")
+			print(self.distanceInterVehicule)
+		self.numberImages=self.numberImages+1
 		return  self.objects
+		
+		
 	def filtrage(self):
 		print("avant")
 		print(self.objects)

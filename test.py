@@ -79,8 +79,23 @@ data=[0, 891.6331787109375, 893.499267578125, 893.4239501953125, 889.97448730468
 # #print(distance((892.500244140625, 482.22479248046875)))
 # distanceSeries=pd.Series([10,12])
 # print(distanceSeries.pct_change())
+from collections import OrderedDict
 listes=[{"a":10},{"a":100}]
 for liste in reversed(listes):
     if liste["a"]==100 :
         listes.remove(liste)
-print(listes)
+liste=OrderedDict()
+liste[0]=[510,5]
+liste[1]=[5,100]
+liste[2]=[51,5]
+mat=[]
+for object in liste:
+    mat.append(liste[object])
+from scipy.spatial import distance_matrix as dist_mat
+from scipy.spatial import distance as dist
+import math
+print(dist_mat(mat,mat))
+print(dist.cdist(mat,mat))
+def distance(p,q):
+    return math.sqrt((p[0]-q[0])**2 +(p[1]-q[1])**2)
+print(distance([510,5],[5,100]))

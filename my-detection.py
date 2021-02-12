@@ -55,7 +55,7 @@ while True:
     # render the image
     objects=ct.update(rects)
     print("nobre de de vehicles ")
-    print("objets traques =={:d}".format(len(objects)))
+    # print("objets traques =={:d}".format(len(objects)))
     output.Render(img)
     # update the title bar
     output.SetStatus("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
