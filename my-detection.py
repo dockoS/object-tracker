@@ -20,6 +20,7 @@ except:
 	print("")
 	parser.print_help()
 	sys.exit(0)
+#instance ct 
 ct=CentroidTracker()
 # load the object detection network
 net = jetson.inference.detectNet(opt.network, sys.argv, opt.threshold)
@@ -33,6 +34,7 @@ output = jetson.utils.videoOutput(opt.output_URI, argv=sys.argv)
 compteur=0
 i=0
 data=[]
+#the index of vehicles in labels which is trained the model
 labels=[2,3,5,6,7,8]
 # process frames until the user exits
 while True:
@@ -45,6 +47,7 @@ while True:
     print("detections ={:d}".format(len(detections)))    
     # print the detections
     #print("detected {:d} objects in image number {:d}".format(len(detections),i))
+    #In this loop we append in the rects the information of each detection
     for detection in detections:
         if detection.ClassID in labels:
             print(" class == {:d}  confiance={:f}". format(detection.ClassID,detection.Confidence))
@@ -53,6 +56,7 @@ while True:
             data.append({"x":detection.Center[0],"y":detection.Center[1]})
     print("taille rectangle =={:d}".format(len(rects)))
     # render the image
+    #call the update method with rects
     objects=ct.update(rects)
     print("nobre de de vehicles ")
     # print("objets traques =={:d}".format(len(objects)))

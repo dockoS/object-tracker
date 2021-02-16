@@ -18,20 +18,27 @@ class CentroidTracker():
 		# ID to its centroid and number of consecutive frames it has
 		# been marked as "disappeared", respectively
 		self.nextObjectID = 0
+  		#the dictionnary to save the rate variations of the objects .This allow to know if the objets is stopped or not
 		self.variation_rates_centroids=OrderedDict()
+		#dictionaries used to keep track of mapping a given object
 		self.objects = OrderedDict()
 		self.disappeared = OrderedDict()
+        #It save the class of each object
 		self.classes=OrderedDict()
+		# The time in milliseconde .
 		self.temps=time.time()*1000
+		# the time t or the periode, it allow to calculate the acceleration or velocity
 		self.t=0
+		# Save the instantaneous speed of each object in each image
 		self.speed_vectors_dict=OrderedDict()
+		# Save the instantaneous speed of each object in each image
 		self.distanceInterVehicule=OrderedDict()
 		self.numberImages=0
 		# store the number of maximum consecutive frames a given
 		# object is allowed to be marked as "disappeared" until we
 		# need to deregister the object from tracking
 		self.maxDisappeared = maxDisappeared
-
+    #This Methode save a centroid  and initialize the information of  a centroid  
 	def register(self, centroid,Class):
 		# when registering an object we use the next available object
 		# ID to store the centroid
@@ -49,6 +56,7 @@ class CentroidTracker():
 		del self.objects[objectID]
 		del self.classes[objectID]
 		del self.speed_vectors_dict[objectID]
+	#speed calculate the velocity on the other hand the acceleration
 	def speed(self,centroidA,centroidB,t_i_1):
 		tA=self.t
 		vx=0
@@ -58,33 +66,23 @@ class CentroidTracker():
 			vy=(centroidA[1]-centroidB[1])/(tA-t_i_1)
 		
 		return {"speed":(vx,vy),"time":(tA,t_i_1)}
+    # this calculate the interdistance of all objects 
 	def interdistance(self):
 		mat=[]
 		for object in self.objects:
 			mat.append(self.objects[object])	
 		return dist_mat(mat,mat)
-
+    # The most important method .All happen in this method
 	def update(self, rects):
     	
 		# check to see if the list of input bounding box rectangles
 		# is empty
 		if len(rects) == 0:
-			# loop over any existing tracked objects and mark them
-			# as disappeared
-			for objectID in list(self.disappeared.keys()):
-				self.disappeared[objectID] += 1
-
-				# if we have reached a maximum number of consecutive
-				# frames where a given object has been marked as
-				# missing, deregister it
-				#if self.disappeared[objectID] > self.maxDisappeared:
-					#self.deregister(objectID)
-
 			# return early as there are no centroids or tracking info
 			# to update
 			return self.objects
 
-		# initialize an array of input centroids for the current frame
+		# initialize an array of input and class centroids  for the current frame
 		inputCentroids = np.zeros((len(rects), 2), dtype="float")
 		inputClasses = np.zeros((len(rects)), dtype="int")
 
@@ -149,12 +147,14 @@ class CentroidTracker():
 				# set its new centroid, and reset the disappeared
 				# counter
 				objectID = objectIDs[row]
-				#dans cet partie on calcule le taux de variation du centroide 
-				#la variation de la distance entre le centroid et l origine
+				#compute the euclidien distance between  the origin and a centroid
 				distance0=distance(self.objects[objectID])
 				distance1=distance(inputCentroids[col])
+				
 				distanceSeries=pd.Series([distance0,distance1])
+				#data contains the variation rate between the previous position and the current position
 				data=distanceSeries.pct_change()[1]
+				#this line update the sum of the object's variation rate
 				self.variation_rates_centroids[objectID]=self.variation_rates_centroids[objectID]+data
 				print("variation")
 				print(data)
@@ -165,7 +165,7 @@ class CentroidTracker():
 				# lets compute the speed of each centroid updated
 				speed_vector=self.speed(self.objects[objectID],inputCentroids[col],self.t+tB-self.temps)
 				print(speed_vector)
-				#self.speed_vectors.append(speed_vector)
+			    #after calculating the velocity, lets append the new speed of the centroid  
 				self.speed_vectors_dict[objectID].append(speed_vector)
 				#Lets update the centroid value
 				#before updating the centroid we must check if it is the same centroid: If the centroid variation is
@@ -221,13 +221,16 @@ class CentroidTracker():
 
 		# return the set of trackable objects
 		if len(self.objects)>=2:
+			# if the number of object is greater than 1 we compute the 
+    		# distance matrix and save it in the distanceInterVehicule's dictionnary
+			# We use the number of images to know what is the distance between vehicles in each image
 			self.distanceInterVehicule[self.numberImages]=self.interdistance()
 			print("mattttttttttttttttttttttt")
 			print(self.distanceInterVehicule)
 		self.numberImages=self.numberImages+1
 		return  self.objects
 		
-		
+	#This method delete the the vehicles stopped
 	def filtrage(self):
 		print("avant")
 		print(self.objects)
