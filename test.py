@@ -98,4 +98,4 @@ print(dist_mat(mat,mat))
 print(dist.cdist(mat,mat))
 def distance(p,q):
     return math.sqrt((p[0]-q[0])**2 +(p[1]-q[1])**2)
-print(distance([510,5],[5,100]))
+print(8644.8515625-8715.341064453125)

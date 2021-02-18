@@ -5,6 +5,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 from math import sqrt
+import matplotlib.pyplot as plt
 import time
 def distance(p):
     return sqrt(p[0]**2 +p[1]**2)
@@ -31,9 +32,12 @@ class CentroidTracker():
 		self.t=0
 		# Save the instantaneous speed of each object in each image
 		self.speed_vectors_dict=OrderedDict()
+		self.acceleration_vectors_dict=OrderedDict()
 		# Save the instantaneous speed of each object in each image
 		self.distanceInterVehicule=OrderedDict()
 		self.numberImages=0
+		self.predictedData=list()
+		self.measuredData=list()
 		# store the number of maximum consecutive frames a given
 		# object is allowed to be marked as "disappeared" until we
 		# need to deregister the object from tracking
@@ -44,6 +48,7 @@ class CentroidTracker():
 		# ID to store the centroid
 		self.objects[self.nextObjectID] = centroid
 		self.speed_vectors_dict[self.nextObjectID]=list()
+		self.acceleration_vectors_dict[self.nextObjectID]=list()
 		self.variation_rates_centroids[self.nextObjectID]=0
 		self.disappeared[self.nextObjectID] = 0
 		self.classes[self.nextObjectID]=Class
@@ -57,15 +62,19 @@ class CentroidTracker():
 		del self.classes[objectID]
 		del self.speed_vectors_dict[objectID]
 	#speed calculate the velocity on the other hand the acceleration
-	def speed(self,centroidA,centroidB,t_i_1):
+	def derivation(self,valueA,valueB,t_i_1,type="speed"):
 		tA=self.t
 		vx=0
 		vy=0
 		if tA!=t_i_1 :
-			vx=(centroidA[0]-centroidB[0])/(tA-t_i_1)
-			vy=(centroidA[1]-centroidB[1])/(tA-t_i_1)
-		
-		return {"speed":(vx,vy),"time":(tA,t_i_1)}
+			vx=(valueA[0]-valueB[0])/(tA-t_i_1)
+			vy=(valueA[1]-valueB[1])/(tA-t_i_1)
+			print(vx)
+		if type=="acceleration":
+			print("acccccccccccccccccccccccccccccceeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+			vx=vx*1000
+			vy=vy*1000
+		return {type:(vx,vy),"time":(tA,t_i_1)}
     # this calculate the interdistance of all objects 
 	def interdistance(self):
 		mat=[]
@@ -102,15 +111,30 @@ class CentroidTracker():
 		# try to match the input centroids to existing object
 		# centroids
 		else:
-			# grab the set of object IDs and corresponding centroids
+    			# grab the set of object IDs and corresponding centroids
+			tB=time.time()*1000
 			objectIDs = list(self.objects.keys())
 			objectCentroids = list(self.objects.values())
-
+            #We use the predicted centroid's position to closer the real object input
+			predictedObjectCentroids=list()
+			for j in range(len(objectCentroids)):
+				if (len(self.speed_vectors_dict[objectIDs[j]])>0):
+    
+					velocity=self.speed_vectors_dict[objectIDs[j]][-1]
+					speed=velocity["speed"]
+					delta_t= tB-self.temps
+					cx=objectCentroids[j][0] + delta_t*speed[0]
+					cy=objectCentroids[j][1] + delta_t*speed[1]
+					predictedObjectCentroids.append([cx,cy])
+				else:
+					predictedObjectCentroids.append(objectCentroids[j])
+			if self.disappeared[0]<=10:
+				self.predictedData.append(predictedObjectCentroids[0])
 			# compute the distance between each pair of object
 			# centroids and input centroids, respectively -- our
 			# goal will be to match an input centroid to an existing
 			# object centroid
-			D = dist.cdist(np.array(objectCentroids), inputCentroids)
+			D = dist.cdist(np.array(predictedObjectCentroids), inputCentroids)
 
 			# in order to perform this matching we must (1) find the
 			# smallest value in each row and then (2) sort the row
@@ -133,7 +157,6 @@ class CentroidTracker():
 			# loop over the combination of the (row, column) index
 			# tuples
 			#TB is the time now in seconde 
-			tB=time.time()*1000
 			
 			
 			for (row, col) in zip(rows, cols):
@@ -155,38 +178,62 @@ class CentroidTracker():
 				#data contains the variation rate between the previous position and the current position
 				data=distanceSeries.pct_change()[1]
 				#this line update the sum of the object's variation rate
-				self.variation_rates_centroids[objectID]=self.variation_rates_centroids[objectID]+data
-				print("variation")
+				
+				print("variationnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
 				print(data)
+				print("object n =")
+				print(objectID)
 				print("somme des variations")
 				print(self.variation_rates_centroids[objectID])
-				print("centroid")
-				print(objectID)
+				
 				# lets compute the speed of each centroid updated
-				speed_vector=self.speed(self.objects[objectID],inputCentroids[col],self.t+tB-self.temps)
-				print(speed_vector)
+				speed_vector=self.derivation(self.objects[objectID],inputCentroids[col],self.t+tB-self.temps)
+				#print(speed_vector)
 			    #after calculating the velocity, lets append the new speed of the centroid  
-				self.speed_vectors_dict[objectID].append(speed_vector)
+				
+				print("speeed")
+				print(speed_vector)
 				#Lets update the centroid value
 				#before updating the centroid we must check if it is the same centroid: If the centroid variation is
 				#greater than 0.2 (bias) we assume that this centroid is a new centroid an unseen object and we register it
-				if len(self.speed_vectors_dict[objectID])>=2:	
-					if abs(data)<0.3 and signe(self.speed_vectors_dict[objectID][-2]["speed"],speed_vector["speed"])>0:
+				if len(self.speed_vectors_dict[objectID])>=1:	
+					if abs(data)<0.3 and signe(self.speed_vectors_dict[objectID][-1]["speed"],speed_vector["speed"])>0:
+						self.speed_vectors_dict[objectID].append(speed_vector)
+						self.variation_rates_centroids[objectID]=self.variation_rates_centroids[objectID]+data
 						self.objects[objectID] = inputCentroids[col]
+						#compute the accelaration
+						
+						acceleration_vector=self.derivation(self.speed_vectors_dict[objectID][-1]["speed"],speed_vector["speed"],self.t+tB-self.temps,"acceleration")
+						self.acceleration_vectors_dict[objectID].append(acceleration_vector)
+						
 						self.disappeared[objectID] = 0
+						
 					else:
+						print("dockkkkkkkkkkoooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo")
 						self.register(inputCentroids[col],inputClasses[col])
 				else:
 					if abs(data)<0.3:
+						self.speed_vectors_dict[objectID].append(speed_vector)
+						self.acceleration_vectors_dict[objectID].append(speed_vector)
+						self.variation_rates_centroids[objectID]=self.variation_rates_centroids[objectID]+data
 						self.objects[objectID] = inputCentroids[col]
 						self.disappeared[objectID] = 0
 					else:
+						print("dockkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk")
 						self.register(inputCentroids[col],inputClasses[col])
 				# indicate that we have examined each of the row and
 				# column indexes, respectively
 				usedRows.add(row)
 				usedCols.add(col)
-			print(self.objects)
+			self.measuredData.append(self.objects[0])
+			print("time")
+			print(tB-self.temps)
+			print("predicted object")
+			print(predictedObjectCentroids)
+			print(" objects ")
+			print(objectCentroids)
+			print("input object")
+			print(inputCentroids)
 			self.t=self.t + tB-self.temps
 			self.temps=tB
 			# compute both the row and column index we have NOT yet
@@ -225,8 +272,6 @@ class CentroidTracker():
     		# distance matrix and save it in the distanceInterVehicule's dictionnary
 			# We use the number of images to know what is the distance between vehicles in each image
 			self.distanceInterVehicule[self.numberImages]=self.interdistance()
-			print("mattttttttttttttttttttttt")
-			print(self.distanceInterVehicule)
 		self.numberImages=self.numberImages+1
 		return  self.objects
 		
@@ -237,12 +282,31 @@ class CentroidTracker():
 		print(self.variation_rates_centroids)
 		print(self.classes)
 		for i in range(len(self.objects)):
-			if abs(self.variation_rates_centroids[i])<0.1:
+			if abs(self.variation_rates_centroids[i])<0.2:
 				self.deregister(i)
 		print("Apres")
 		print(self.objects)
 		print(self.classes)
 		print(self.variation_rates_centroids)
-		print("Speed vectors")
+		print("predictedData")
+		print(np.array(self.predictedData))
+		print("measuredData")
+		print(np.array(self.measuredData))
 		# print(self.speed_vectors_dict)
 		return len(self.objects)
+	def plotValues(self):   
+		measuredData=np.array(self.measuredData)
+		predictedData=np.array(self.predictedData)
+		print("dockoooooooooooooooo")
+		print(self.disappeared[0])
+		print(len(measuredData)) 
+		print(len(predictedData))
+		print(self.speed_vectors_dict[0])
+		print(self.acceleration_vectors_dict[0])
+		plt.plot(measuredData[:,0],measuredData[:,1],"-b",label='mesured values')
+		plt.plot(predictedData[:,0],predictedData[:,1],"--r",label='predicted values')
+		plt.legend()
+		plt.show()
+    	
+    	
+		

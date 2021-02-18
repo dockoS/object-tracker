@@ -5,6 +5,7 @@ import argparse
 import sys
 from collections import OrderedDict
 from matplotlib import pyplot as plt
+
 # parse the command line
 parser = argparse.ArgumentParser(description="Locate objects in a live camera stream using an object detection DNN.")
 
@@ -35,7 +36,8 @@ compteur=0
 i=0
 data=[]
 #the index of vehicles in labels which is trained the model
-labels=[2,3,5,6,7,8]
+labels=[3]
+#labels=[2,4,3,5,6,7,8]
 # process frames until the user exits
 while True:
     # capture the next image
@@ -50,16 +52,15 @@ while True:
     #In this loop we append in the rects the information of each detection
     for detection in detections:
         if detection.ClassID in labels:
-            print(" class == {:d}  confiance={:f}". format(detection.ClassID,detection.Confidence))
-            print("center= "+str(detection.Center))
+            # print(" class == {:d}  confiance={:f}". format(detection.ClassID,detection.Confidence))
+            # print("center= "+str(detection.Center))
             rects.append(detection)
             data.append({"x":detection.Center[0],"y":detection.Center[1]})
-    print("taille rectangle =={:d}".format(len(rects)))
+    #print("taille rectangle =={:d}".format(len(rects)))
     # render the image
     #call the update method with rects
     objects=ct.update(rects)
-    print("nobre de de vehicles ")
-    # print("objets traques =={:d}".format(len(objects)))
+    #print("objets traqueeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeees =={:d}".format(len(objects)))
     output.Render(img)
     # update the title bar
     output.SetStatus("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
@@ -71,4 +72,4 @@ while True:
     if not inputs.IsStreaming() or not output.IsStreaming():
             break
 print("nombre d objet final= {:d}".format(ct.filtrage()))
-
+ct.plotValues()
