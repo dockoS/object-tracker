@@ -136,7 +136,7 @@ class CentroidTracker():
 					delta_t = tB-self.temps
 					if (len(self.acceleration_vectors_dict[objectIDs[j]]) > 0):
 						acceleration = self.acceleration_vectors_dict[objectIDs[j]
-																	  ][-1]["acceleration"]
+									 ][-1]["acceleration"]
 						cx = objectCentroids[j][0] + delta_t * \
 							speed[0] + (0.5*acceleration[0]*(delta_t**2))
 						cy = objectCentroids[j][1] + delta_t * \
@@ -147,8 +147,8 @@ class CentroidTracker():
 					predictedObjectCentroids.append([cx, cy])
 				else:
 					predictedObjectCentroids.append(objectCentroids[j])
-			if self.disappeared[0] <= 4:
-				self.predictedData.append(predictedObjectCentroids[0])
+			 #if self.disappeared[0] <= 4:
+				#self.predictedData.append(predictedObjectCentroids[0])
 			# compute the distance between each pair of object
 			# centroids and input centroids, respectively -- our
 			# goal will be to match an input centroid to an existing
@@ -225,7 +225,7 @@ class CentroidTracker():
 						self.disappeared[objectID] = 0
 
 					else:
-
+	
 						self.register(inputCentroids[col], inputClasses[col])
 				else:
 					if abs(data) < self.max_variation_rate:
@@ -243,7 +243,8 @@ class CentroidTracker():
 				# column indexes, respectively
 				usedRows.add(row)
 				usedCols.add(col)
-			self.measuredData.append(self.objects[0])
+
+			print("dougou na fi")
 			self.t = self.t + tB-self.temps
 			self.temps = tB
 			# compute both the row and column index we have NOT yet
@@ -255,6 +256,7 @@ class CentroidTracker():
 			# equal or greater than the number of input centroids
 			# we need to check and see if some of these objects have
 			# potentially disappeared
+		
 			if D.shape[0] >= D.shape[1]:
 				# loop over the unused row indexes
 				for row in unusedRows:
@@ -295,15 +297,15 @@ class CentroidTracker():
 		# print(self.speed_vectors_dict)
 		return len(self.objects)
 
-	def plotValues(self):
-		measuredData = np.array(self.measuredData)
-		predictedData = np.array(self.predictedData)
-		plt.plot(measuredData[:, 0], measuredData[:, 1],
-				 "-b", label='mesured values')
-		plt.plot(predictedData[:, 0], predictedData[:, 1],
-				 "--r", label='predicted values')
-		plt.legend()
-		plt.show()
+	# def plotValues(self):
+	# 	measuredData = np.array(self.measuredData)
+	# 	predictedData = np.array(self.predictedData)
+	# 	plt.plot(measuredData[:, 0], measuredData[:, 1],
+	# 			 "-b", label='mesured values')
+	# 	plt.plot(predictedData[:, 0], predictedData[:, 1],
+	# 			 "--r", label='predicted values')
+	# 	plt.legend()
+	# 	plt.show()
 
 	def formatage_info_objects(self):
 		objectIDs = list(self.objects.keys())
@@ -393,16 +395,23 @@ class CentroidTracker():
 							 name_cinetiques_files, index=False)            
 		
 		for identity in df_info_objects["identifiant"].values:
+		# 	print("Dockooooooooooooooooooooooooooooooooooooooo")
 			if self.disappeared[identity]>self.maxDisappeared:
+				print("OK")
 				del self.objects[identity]
 				del self.speed_vectors_dict[identity]
 				del self.acceleration_vectors_dict[identity]
 				del self.tracking_positions_objects[identity]
 				del self.variation_rates_centroids[identity]
 			else:
-				self.speed_vectors_dict[identity]=self.speed_vectors_dict[identity][-1:]
-				self.acceleration_vectors_dict[identity]=self.acceleration_vectors_dict[identity][-1:]
-				self.tracking_positions_objects[identity]=self.tracking_positions_objects[identity][-1:]
+				print("taille speed")
+				print(len(self.speed_vectors_dict[identity]))
+				if(len(self.speed_vectors_dict[identity])>0):
+					print("YESSSSSSSSSS")
+					#self.speed_vectors_dict[identity]=self.speed_vectors_dict[identity][-1]
+				self.acceleration_vectors_dict[identity]=self.acceleration_vectors_dict[identity][-1]
+				#self.tracking_positions_objects[identity]=self.tracking_positions_objects[identity][-1:]
 		self.number_of_saves=self.number_of_saves+1
-		return self.speed_vectors_dict
+		#print(self.number_of_saves)
+		return self.objects
 				

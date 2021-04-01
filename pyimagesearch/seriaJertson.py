@@ -1,21 +1,20 @@
 import serial
 import time
-arduino=serial.Serial(port="/dev/ttyACM0",
-baudrate=115200
-)
+arduino = serial.Serial(port='/dev/ttyACM0', baudrate=115200, timeout=.1)
+def write_read(x):
+	arduino.write(bytes(x, 'utf-8'))
+	time.sleep(0.05)
+	data = arduino.readline()
+	return data
 while True:
+	time.sleep(0.05)
 	try:
-		arduino.write("hello IRD !".encode())
-		data=arduino.readline()
-		if data:
-			print(data)
-		time.sleep(1)
-	except Exception as e:
-		print(e)
-		arduino.close()
-
-
-
+	
+		data = arduino.readline()
+		print(data)
+	except UnicodeDecodeError:
+		print("hiiiiiiiiii")
+	
 
 
 

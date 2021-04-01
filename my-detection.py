@@ -61,17 +61,18 @@ while True:
 	#print("taille rectangle =={:d}".format(len(rects)))
 	# render the image
 	#call the update method with rects
+	print("docko")
 	objects=ct.update(rects)
 	#print("objets traqueeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeees =={:d}".format(len(objects)))
 	output.Render(img)
 	# update the title bar
 	output.SetStatus("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
 	time_current=perf_counter()
-	if (time_start-time_current>30):
+	if (time_current-time_start>10):
 		#ct.save_data_to_csv()
 		time_start=time_current
 		i=i+1
-		print("DOCKOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
+		print(ct.save_data_to_csv())
 	# print out performance info
 	net.PrintProfilerTimes()
 	# exit on input/output EOS
