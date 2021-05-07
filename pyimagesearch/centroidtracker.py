@@ -24,6 +24,7 @@ class CentroidTracker():
 		# dictionaries used to keep track of mapping a given object
 		# ID to its centroid and number of consecutive frames it has
 		# been marked as "disappeared", respectively
+		self.referencedClasses=dict({0:"unnamed",3:"voiture",4:"motocycle",6:"bus",8:"camion"})
 		self.nextObjectID = 0
 		# the dictionnary to save the rate variations of the objects .This allow to know if the objets is stopped or not
 		self.variation_rates_centroids = OrderedDict()
@@ -50,7 +51,7 @@ class CentroidTracker():
 		# object is allowed to be marked as "disappeared" until we
 		# need to deregister the object from tracking
 		self.maxDisappeared = maxDisappeared
-		self.max_variation_rate_stopped_vehicles = 0.2
+		self.max_variation_rate_stopped_vehicles = 0.3
 		self.max_variation_rate = 0.3
 		self.tracking_positions_objects = OrderedDict()
 	# This Methode save a centroid  and initialize the information of  a centroid
@@ -75,6 +76,7 @@ class CentroidTracker():
 		del self.objects[objectID]
 		del self.classes[objectID]
 		del self.speed_vectors_dict[objectID]
+		del self.variation_rates_centroids[objectID]
 	# speed calculate the velocity on the other hand the acceleration
 
 	def derivation(self, valueA, valueB, t_i_1, type="speed"):
@@ -87,10 +89,10 @@ class CentroidTracker():
 		return {type: (vx, vy), "time": (tA, t_i_1)}
 	# this calculate the interdistance of all objects
 
-	def interdistance(self):
+	def interdistance(self,df):
 		mat = []
-		for object in self.objects:
-			mat.append(self.objects[object])
+		for i  in range(df.shape[0]):
+			mat.append([df.iloc[i]["X"],df.iloc[i]["Y"]])
 		return dist_mat(mat, mat)
 	# The most important method .All happen in this method
 
@@ -279,12 +281,11 @@ class CentroidTracker():
 					self.register(inputCentroids[col], inputClasses[col])
 
 		# return the set of trackable objects
-		if len(self.objects) >= 2:
+		
 			# if the number of object is greater than 1 we compute the
 			# distance matrix and save it in the distanceInterVehicule's dictionnary
 			# We use the number of images to know what is the distance between vehicles in each image
-			self.distanceInterVehicule[self.numberImages] = self.interdistance(
-			)
+			#self.distanceInterVehicule[self.numberImages] = [self.interdistance(),self.t]
 		self.numberImages = self.numberImages+1
 		return self.objects
 
@@ -292,10 +293,21 @@ class CentroidTracker():
 	def filtrage(self):
 		for i in range(len(self.objects)):
 			if abs(self.variation_rates_centroids[i]) < self.max_variation_rate_stopped_vehicles:
+				print("yesssss")
 				self.deregister(i)
 	
 		# print(self.speed_vectors_dict)
 		return len(self.objects)
+	def nbreVehiculeParClasse(self):
+		self.filtrage()
+		nbre={}
+		data=list(self.classes.values())
+		for key in self.referencedClasses.keys():
+			print(data.count(key))
+			print(self.referencedClasses[key])
+			nbre[self.referencedClasses[key]]=data.count(key)
+			print(self.variation_rates_centroids)
+		return nbre		
 
 	# def plotValues(self):
 	# 	measuredData = np.array(self.measuredData)
@@ -342,60 +354,161 @@ class CentroidTracker():
 		accelerationY = list()
 		temps_initial = list()
 		temps_final = list()
-		for identity in objectIDs:
-			X.append(self.tracking_positions_objects[identity][0][0])
-			Y.append(self.tracking_positions_objects[identity][0][1])
-			identifiant.append(identity)
-			vitesseX.append(None)
-			vitesseY.append(None)
-			accelerationX.append(None)
-			accelerationY.append(None)
-			temps_initial.append(
-				self.speed_vectors_dict[identity][0]["time"][0])
-			temps_final.append(self.speed_vectors_dict[identity][0]["time"][1])
-		for identity in objectIDs:
+		#On sait que avant la premiere sauvegarder tous les objets on la meme structure cad cad pour chaque objet
+		#on a taille(position_traquees)=taille(speed_vectors)+1 =taille(acceleration_vect)+2 (***1***)
+		#Apres la premiere sauvegarde et les sauvegardes qui vont venir certains qui ne sont pas (***2***)
+		#disparu lors a cet instant de sauvegarde verront leur  taille(position_traquees)=taille(speed_vectors) =taille(acceleration_vect) (***3***) et
+		# les nouveaux vehicules detectes verront leur taille(position_traquees)=taille(speed_vectors)+1 =taille(acceleration_vect)+2 (***4***)
+	
+		#cas (***1***)	
+		if (self.number_of_saves==0):
 
-			identifiant.append(identity)
-			X.append(self.tracking_positions_objects[identity][1][0])
-			Y.append(self.tracking_positions_objects[identity][1][1])
-			vitesseX.append(self.speed_vectors_dict[identity][0]["speed"][0])
-			vitesseY.append(self.speed_vectors_dict[identity][0]["speed"][1])
-			accelerationX.append(None)
-			accelerationY.append(None)
-			temps_initial.append(
-				self.speed_vectors_dict[identity][0]["time"][0])
-			temps_final.append(self.speed_vectors_dict[identity][0]["time"][1])
-			for i in range(len(self.acceleration_vectors_dict[identity])):
-				X.append(self.tracking_positions_objects[identity][i+2][0])
-				Y.append(self.tracking_positions_objects[identity][i+2][1])
+			for identity in objectIDs:
+				#premierement on enregistre la premiere position de l objet .Or a l etat initial il n a ni vitesse ni acceleration
+				X.append(self.tracking_positions_objects[identity][0][0])
+				Y.append(self.tracking_positions_objects[identity][0][1])
 				identifiant.append(identity)
-				vitesseX.append(
-					self.speed_vectors_dict[identity][i+1]["speed"][0])
-				vitesseY.append(
-					self.speed_vectors_dict[identity][i+1]["speed"][1])
-				accelerationY.append(
-					self.acceleration_vectors_dict[identity][i]["acceleration"][1])
-				accelerationX.append(
-					self.acceleration_vectors_dict[identity][i]["acceleration"][0])
+				#Pas de vitesse
+				vitesseX.append(None)
+				vitesseY.append(None)
+				#Pas d acceleration
+				accelerationX.append(None)
+				accelerationY.append(None)
+				#Le temps de debut est egal au temps de fin
 				temps_initial.append(
-					self.acceleration_vectors_dict[identity][i]["time"][0])
-				temps_final.append(
-					self.acceleration_vectors_dict[identity][i]["time"][1])
-
+					self.speed_vectors_dict[identity][0]["time"][0])
+				temps_final.append(self.speed_vectors_dict[identity][0]["time"][0])
+				
+				#deuxieme on enregistre la deuxieme position de l objet .Or a cette etat on a que la vitesse et non l acceleration
+				identifiant.append(identity)
+				X.append(self.tracking_positions_objects[identity][1][0])
+				Y.append(self.tracking_positions_objects[identity][1][1])
+				#vitesse
+				vitesseX.append(self.speed_vectors_dict[identity][0]["speed"][0])
+				vitesseY.append(self.speed_vectors_dict[identity][0]["speed"][1])
+				#pas d acceleration
+				accelerationX.append(None)
+				accelerationY.append(None)
+				temps_initial.append(
+					self.speed_vectors_dict[identity][0]["time"][0])
+				temps_final.append(self.speed_vectors_dict[identity][0]["time"][1])
+				#A ce niveau on on est a la 3 ieme position ici l objet a toutes les cinetiques :vitesse et acceleration
+				for i in range(len(self.acceleration_vectors_dict[identity])):
+					#Le tableau contenant les tracking comment a 2 et celui des vitesse a 1 d'ou les i+1 et i+2
+					X.append(self.tracking_positions_objects[identity][i+2][0])
+					Y.append(self.tracking_positions_objects[identity][i+2][1])
+					identifiant.append(identity)
+					vitesseX.append(
+						self.speed_vectors_dict[identity][i+1]["speed"][0])
+					vitesseY.append(
+						self.speed_vectors_dict[identity][i+1]["speed"][1])
+					accelerationY.append(
+						self.acceleration_vectors_dict[identity][i]["acceleration"][1])
+					accelerationX.append(
+						self.acceleration_vectors_dict[identity][i]["acceleration"][0])
+					temps_initial.append(
+						self.acceleration_vectors_dict[identity][i]["time"][0])
+					temps_final.append(
+						self.acceleration_vectors_dict[identity][i]["time"][1])
+		else:
+			#cas (***2***)
+			for identity in objectIDs:
+				#cas (***3***)
+				if (len(self.tracking_positions_objects[identity])==len(self.speed_vectors_dict[identity])):
+					#Ici tous les tableaux commencent par 0 
+					for i in range(len(self.acceleration_vectors_dict[identity])):
+						X.append(self.tracking_positions_objects[identity][i][0])
+						Y.append(self.tracking_positions_objects[identity][i][1])
+						identifiant.append(identity)
+						vitesseX.append(
+							self.speed_vectors_dict[identity][i]["speed"][0])
+						vitesseY.append(
+							self.speed_vectors_dict[identity][i]["speed"][1])
+						accelerationY.append(
+							self.acceleration_vectors_dict[identity][i]["acceleration"][1])
+						accelerationX.append(
+							self.acceleration_vectors_dict[identity][i]["acceleration"][0])
+						temps_initial.append(
+							self.acceleration_vectors_dict[identity][i]["time"][0])
+						temps_final.append(
+							self.acceleration_vectors_dict[identity][i]["time"][1])
+				else:
+					#cas (***4***) c pareill que le cas 1
+					X.append(self.tracking_positions_objects[identity][0][0])
+					Y.append(self.tracking_positions_objects[identity][0][1])
+					identifiant.append(identity)
+					vitesseX.append(None)
+					vitesseY.append(None)
+					accelerationX.append(None)
+					accelerationY.append(None)
+					temps_initial.append(
+						self.speed_vectors_dict[identity][0]["time"][0])
+					temps_final.append(self.speed_vectors_dict[identity][0]["time"][0])
+					
+					
+					identifiant.append(identity)
+					X.append(self.tracking_positions_objects[identity][1][0])
+					Y.append(self.tracking_positions_objects[identity][1][1])
+					vitesseX.append(self.speed_vectors_dict[identity][0]["speed"][0])
+					vitesseY.append(self.speed_vectors_dict[identity][0]["speed"][1])
+					accelerationX.append(None)
+					accelerationY.append(None)
+					temps_initial.append(
+						self.speed_vectors_dict[identity][0]["time"][0])
+					temps_final.append(self.speed_vectors_dict[identity][0]["time"][1])
+					for i in range(len(self.acceleration_vectors_dict[identity])):
+						X.append(self.tracking_positions_objects[identity][i+2][0])
+						Y.append(self.tracking_positions_objects[identity][i+2][1])
+						identifiant.append(identity)
+						vitesseX.append(
+							self.speed_vectors_dict[identity][i+1]["speed"][0])
+						vitesseY.append(
+							self.speed_vectors_dict[identity][i+1]["speed"][1])
+						accelerationY.append(
+							self.acceleration_vectors_dict[identity][i]["acceleration"][1])
+						accelerationX.append(
+							self.acceleration_vectors_dict[identity][i]["acceleration"][0])
+						temps_initial.append(
+							self.acceleration_vectors_dict[identity][i]["time"][0])
+						temps_final.append(
+							self.acceleration_vectors_dict[identity][i]["time"][1])
 		return pd.DataFrame.from_dict({"identifiant": identifiant, "X": X, "Y": Y, "vitesseX": vitesseX, "vitesseY": vitesseY, "accelerationX": accelerationX, "accelerationY": accelerationY, "temps_initial": temps_initial, "temps_final": temps_final})
 
+	def computeInterdistance(self,df_info_objects,df_cinetiques):
+		identifiants=list()
+		interdistance=list()
+		listTemps=list()
+		#objectIDs=[df_info_objects[i]["identifiant"] for i in range(df_info_objects.shape[0]) if df_info_objects[i]["mobilite"]!="stop"]
+		objectIDs=[df_info_objects.iloc[i]["identifiant"] for i in range(df_info_objects.shape[0]) if df_info_objects.iloc[i]["mobilite"]!="stop"]
+		temps=df_cinetiques["temps_initial"].unique()
+		for time in temps:
+			data=df_cinetiques[df_cinetiques["temps_initial"]==time]
+			identifiants.append(data["identifiant"])
+			listTemps.append(time)
+			interdistance.append(self.interdistance(data))
+		return pd.DataFrame.from_dict({"identifiants": identifiants,"time":time,"interdistance":interdistance })
+			
+			
+			
+		#print(objectIDs)
+		##Tout marche niquelllllllllllllllllll jusque la
 	def save_data_to_csv(self):
+		print("OKKKKKKKKKKKK")
 		df_info_objects = self.formatage_info_objects()
 		df_cinetiques = self.formatage_cinetique()
-		name_info_objects_files = "info_objets_n°"+str(self.number_of_saves)
-		name_cinetiques_files = "cinetiques_n°"+str(self.number_of_saves)
+		name_info_objects_files = "info_objets_n°"+str(self.number_of_saves)+".csv"
+		name_interdistance_files = "interdistance_n°"+str(self.number_of_saves)+".csv"
+		name_cinetiques_files = "cinetiques_n°"+str(self.number_of_saves)+".csv"
+		df_interdistance=self.computeInterdistance(df_info_objects ,df_cinetiques)
 		df_info_objects.to_csv(self.path+"info_objects/" +
 							   name_info_objects_files, index=False)
 		df_cinetiques.to_csv(self.path+"cinetiques/" +
-							 name_cinetiques_files, index=False)            
+							 name_cinetiques_files, index=False)
+		#df_interdistance.to_csv(self.path+"interdistances/" +
+		#					 name_interdistance_files, index=False)    
 		
 		for identity in df_info_objects["identifiant"].values:
-		# 	print("Dockooooooooooooooooooooooooooooooooooooooo")
+			# 	print("Dockooooooooooooooooooooooooooooooooooooooo")
 			if self.disappeared[identity]>self.maxDisappeared:
 				print("OK")
 				del self.objects[identity]
@@ -407,11 +520,14 @@ class CentroidTracker():
 				print("taille speed")
 				print(len(self.speed_vectors_dict[identity]))
 				if(len(self.speed_vectors_dict[identity])>0):
-					print("YESSSSSSSSSS")
-					#self.speed_vectors_dict[identity]=self.speed_vectors_dict[identity][-1]
-				self.acceleration_vectors_dict[identity]=self.acceleration_vectors_dict[identity][-1]
-				#self.tracking_positions_objects[identity]=self.tracking_positions_objects[identity][-1:]
+				 	self.speed_vectors_dict[identity]=self.speed_vectors_dict[identity][-1:]
+				 	print("test")
+				 	print(self.speed_vectors_dict[identity])
+				if(len(self.acceleration_vectors_dict[identity])>0):
+					self.acceleration_vectors_dict[identity]=self.acceleration_vectors_dict[identity][-1:]
+				if(len(self.tracking_positions_objects[identity])>0):
+					self.tracking_positions_objects[identity]=self.tracking_positions_objects[identity][-1:]
 		self.number_of_saves=self.number_of_saves+1
 		#print(self.number_of_saves)
 		return self.objects
-				
+	

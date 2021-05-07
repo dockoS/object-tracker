@@ -37,7 +37,7 @@ compteur=0
 i=0
 data=[]
 #the index of vehicles in labels which is trained the model
-labels=[3,5,6,7,8]
+labels=[0,3,4,6,8]
 #labels=[2,4,3,5,6,7,8]
 # process frames until the user exits
 while True:
@@ -68,15 +68,14 @@ while True:
 	# update the title bar
 	output.SetStatus("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
 	time_current=perf_counter()
-	if (time_current-time_start>10):
+	if (time_current-time_start>40):
 		#ct.save_data_to_csv()
 		time_start=time_current
 		i=i+1
-		print(ct.save_data_to_csv())
+		ct.save_data_to_csv()
 	# print out performance info
 	net.PrintProfilerTimes()
 	# exit on input/output EOS
 	if not inputs.IsStreaming() or not output.IsStreaming():
 			break
-#print("nombre d objet final= {:d}".format(ct.filtrage()))
-print(i)
+#print(ct.nbreVehiculeParClasse())

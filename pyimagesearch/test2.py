@@ -1,4 +1,4 @@
-# import numpy as np
+import numpy as np
 # import math
 # def signe(speed1,speed2):
 #     return (speed1[0]*speed2[0]>=0 and speed1[1]*speed2[1]>=0)
@@ -107,19 +107,21 @@
 # for i in range(len(liste)):
 # 	if liste[i]==liste[i+1]:
 # 		liste=liste[:i]
-# 		break
-# import pandas as pd
+# 		breakdf.to_csv("data.csv", index=False)
+import pandas as pd
 # info={"id":[2,4,5,6]}
 # data=[1,2,3,4]
 # df=pd.DataFrame.from_dict(info)
-from time import perf_counter
-i=0
-t1=perf_counter()
-while True:
-	print ("Avant")
-	t2=perf_counter()
-	if (t1-t2>10):
-		break
-	i=i+1
-print(t1)
-print(t2)
+from collections import OrderedDict
+data=np.array([[1,2,3],[2,4,5]])
+dictio=OrderedDict()
+dictio=[]
+# dictio.append({"data":data,"id":1})
+# dictio.append({"data":data,"id":2})
+# dictio.append({"data":data,"id":3})
+# dictio.append({"data":data,"id":4})
+# df=pd.DataFrame.from_dict(dictio)
+# for d in df.values:
+# 	print(d[0])
+d={1:2,"lsd":6}
+print(d.keys())
