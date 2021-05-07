@@ -35,7 +35,7 @@ class CentroidTracker():
 		self.classes = OrderedDict()
 		self.path = "/home/umisco/my-detection/files/"
 		# The time in milliseconde .
-		self.temps = time.time()*1000
+		self.temps = time.time()
 		# the time t or the periode, it allow to calculate the acceleration or velocity
 		self.t = 0
 		# Save the instantaneous speed of each object in each image
@@ -79,14 +79,14 @@ class CentroidTracker():
 		del self.variation_rates_centroids[objectID]
 	# speed calculate the velocity on the other hand the acceleration
 
-	def derivation(self, valueA, valueB, t_i_1, type="speed"):
-		tA = self.t
+	def derivation(self, valueA, valueB, tB, type="speed"):
+		tA = self.temps
 		vx = 0
 		vy = 0
-		if tA != t_i_1:
-			vx = (valueA[0]-valueB[0])/(tA-t_i_1)
-			vy = (valueA[1]-valueB[1])/(tA-t_i_1)
-		return {type: (vx, vy), "time": (tA, t_i_1)}
+		if tA != tB:
+			vx = (valueA[0]-valueB[0])/(tA-tB)
+			vy = (valueA[1]-valueB[1])/(tA-tB)
+		return {type: (vx, vy), "time": (tA, tB)}
 	# this calculate the interdistance of all objects
 
 	def interdistance(self,df):
@@ -97,7 +97,6 @@ class CentroidTracker():
 	# The most important method .All happen in this method
 
 	def update(self, rects):
-
 		# check to see if the list of input bounding box rectangles
 		# is empty
 		if len(rects) == 0:
@@ -120,13 +119,13 @@ class CentroidTracker():
 		if len(self.objects) == 0:
 			for i in range(0, len(inputCentroids)):
 				self.register(inputCentroids[i], inputClasses[i])
-
+		
 		# otherwise, are are currently tracking objects so we need to
 		# try to match the input centroids to existing object
 		# centroids
 		else:
 			# grab the set of object IDs and corresponding centroids
-			tB = time.time()*1000
+			tB = time.time()
 			objectIDs = list(self.objects.keys())
 			objectCentroids = list(self.objects.values())
 # We use the predicted centroid's position to closer the real object input
@@ -202,7 +201,7 @@ class CentroidTracker():
 
 				# lets compute the speed of each centroid updated
 				speed_vector = self.derivation(
-					self.objects[objectID], inputCentroids[col], self.t+tB-self.temps)
+					self.objects[objectID], inputCentroids[col], tB)
 				# print(speed_vector)
 			# after calculating the velocity, lets append the new speed of the centroid
 
@@ -212,7 +211,7 @@ class CentroidTracker():
 				if len(self.speed_vectors_dict[objectID]) >= 1:
 					if abs(data) < self.max_variation_rate and signe(self.speed_vectors_dict[objectID][-1]["speed"], speed_vector["speed"]) > 0:
 						acceleration_vector = self.derivation(
-							self.speed_vectors_dict[objectID][-1]["speed"], speed_vector["speed"], self.t+tB-self.temps, "acceleration")
+							self.speed_vectors_dict[objectID][-1]["speed"], speed_vector["speed"], tB, "acceleration")
 						self.speed_vectors_dict[objectID].append(speed_vector)
 						self.variation_rates_centroids[objectID] = self.variation_rates_centroids[objectID]+data
 						self.objects[objectID] = inputCentroids[col]
@@ -246,9 +245,6 @@ class CentroidTracker():
 				usedRows.add(row)
 				usedCols.add(col)
 
-			print("dougou na fi")
-			self.t = self.t + tB-self.temps
-			self.temps = tB
 			# compute both the row and column index we have NOT yet
 			# examined
 			unusedRows = set(range(0, D.shape[0])).difference(usedRows)
@@ -286,6 +282,7 @@ class CentroidTracker():
 			# distance matrix and save it in the distanceInterVehicule's dictionnary
 			# We use the number of images to know what is the distance between vehicles in each image
 			#self.distanceInterVehicule[self.numberImages] = [self.interdistance(),self.t]
+			self.temps = tB
 		self.numberImages = self.numberImages+1
 		return self.objects
 
@@ -480,49 +477,53 @@ class CentroidTracker():
 		listTemps=list()
 		#objectIDs=[df_info_objects[i]["identifiant"] for i in range(df_info_objects.shape[0]) if df_info_objects[i]["mobilite"]!="stop"]
 		objectIDs=[df_info_objects.iloc[i]["identifiant"] for i in range(df_info_objects.shape[0]) if df_info_objects.iloc[i]["mobilite"]!="stop"]
-		temps=df_cinetiques["temps_initial"].unique()
+		temps=df_cinetiques["temps_final"].unique()
 		for time in temps:
-			data=df_cinetiques[df_cinetiques["temps_initial"]==time]
-			identifiants.append(data["identifiant"])
+			data=df_cinetiques[df_cinetiques["temps_final"]==time]
+			ids=list(data["identifiant"])
+			#Before append ids we must remove duplicated values
+			idsCleaned=list(dict.fromkeys(ids))
+			print(time)
+			print(idsCleaned)
+			print(data[["X","Y","identifiant"]])
+			#data=data.loc[data["identifiant"] in idsCleaned]
+			identifiants.append(idsCleaned )
 			listTemps.append(time)
 			interdistance.append(self.interdistance(data))
-		return pd.DataFrame.from_dict({"identifiants": identifiants,"time":time,"interdistance":interdistance })
+		return pd.DataFrame.from_dict({"identifiants": identifiants,"time":listTemps,"interdistance":interdistance })
 			
 			
 			
 		#print(objectIDs)
 		##Tout marche niquelllllllllllllllllll jusque la
 	def save_data_to_csv(self):
-		print("OKKKKKKKKKKKK")
+	
 		df_info_objects = self.formatage_info_objects()
 		df_cinetiques = self.formatage_cinetique()
-		name_info_objects_files = "info_objets_n°"+str(self.number_of_saves)+".csv"
-		name_interdistance_files = "interdistance_n°"+str(self.number_of_saves)+".csv"
-		name_cinetiques_files = "cinetiques_n°"+str(self.number_of_saves)+".csv"
-		df_interdistance=self.computeInterdistance(df_info_objects ,df_cinetiques)
+		df_interdistances=self.computeInterdistance(df_info_objects ,df_cinetiques)
+		name_info_objects_file = "info_objets_n°"+str(self.number_of_saves)+".csv"
+		name_interdistance_file = "interdistance_n°"+str(self.number_of_saves)+".csv"
+		name_cinetiques_file = "cinetiques_n°"+str(self.number_of_saves)+".csv"
 		df_info_objects.to_csv(self.path+"info_objects/" +
-							   name_info_objects_files, index=False)
+							   name_info_objects_file, index=False)
 		df_cinetiques.to_csv(self.path+"cinetiques/" +
-							 name_cinetiques_files, index=False)
-		#df_interdistance.to_csv(self.path+"interdistances/" +
-		#					 name_interdistance_files, index=False)    
+							 name_cinetiques_file, index=False)
+		df_interdistances.to_csv(self.path+"interdistances/" +
+							 name_interdistance_file, index=False)    
 		
 		for identity in df_info_objects["identifiant"].values:
 			# 	print("Dockooooooooooooooooooooooooooooooooooooooo")
 			if self.disappeared[identity]>self.maxDisappeared:
-				print("OK")
+
 				del self.objects[identity]
 				del self.speed_vectors_dict[identity]
 				del self.acceleration_vectors_dict[identity]
 				del self.tracking_positions_objects[identity]
 				del self.variation_rates_centroids[identity]
 			else:
-				print("taille speed")
-				print(len(self.speed_vectors_dict[identity]))
+				
 				if(len(self.speed_vectors_dict[identity])>0):
 				 	self.speed_vectors_dict[identity]=self.speed_vectors_dict[identity][-1:]
-				 	print("test")
-				 	print(self.speed_vectors_dict[identity])
 				if(len(self.acceleration_vectors_dict[identity])>0):
 					self.acceleration_vectors_dict[identity]=self.acceleration_vectors_dict[identity][-1:]
 				if(len(self.tracking_positions_objects[identity])>0):

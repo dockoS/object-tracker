@@ -68,7 +68,7 @@ while True:
 	# update the title bar
 	output.SetStatus("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
 	time_current=perf_counter()
-	if (time_current-time_start>40):
+	if (time_current-time_start>55):
 		#ct.save_data_to_csv()
 		time_start=time_current
 		i=i+1
@@ -79,3 +79,4 @@ while True:
 	if not inputs.IsStreaming() or not output.IsStreaming():
 			break
 #print(ct.nbreVehiculeParClasse())
+print(ct.tracking_positions_objects)
